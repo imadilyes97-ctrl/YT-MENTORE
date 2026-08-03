@@ -1,0 +1,10 @@
+# Git ignore — YT Mentor (sécurité JARVIS : zéro secret commité)
+node_modules/
+.next/
+out/
+.env
+.env.local
+.env.*.local
+!.env.example
+*.tsbuildinfo
+next-env.d.ts

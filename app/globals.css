@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b0d12;
+  --foreground: #e8e9ed;
+  --surface: #14171f;
+  --surface-2: #1c2029;
+  --border: #262b36;
+  --accent: #6c5ce7;
+  --accent-2: #00d1b2;
+  --danger: #ff6b6b;
+  --warning: #ffd93d;
+  --success: #6bcb77;
+}
+
+@theme {
+  --color-background: #0b0d12;
+  --color-foreground: #e8e9ed;
+  --color-surface: #14171f;
+  --color-surface-2: #1c2029;
+  --color-border: #262b36;
+  --color-accent: #6c5ce7;
+  --color-accent-2: #00d1b2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+/* Stat */
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Barre de progression YPP — le remplissage anime transform:scaleX (compositor-friendly,
+   pas de layout thrash). Les composants positionnent le pourcentage via scaleX(p) / width. */
+.ypp-track {
+  height: 10px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.ypp-fill {
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left;
+  transition: transform 0.5s ease;
+  will-change: transform;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--foreground);
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+.btn:hover { opacity: 0.85; }
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+
+/* Label mono (données techniques) */
+.label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin-bottom: 0.35rem;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Skeleton de chargement (évite les spinners) */
+.skeleton {
+  background: var(--surface-2);
+  border-radius: 6px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}

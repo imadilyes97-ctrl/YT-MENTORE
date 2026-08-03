@@ -1,0 +1,192 @@
+// YT Mentor — Schéma de base de données (Neon Postgres)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Énumérations ────────────────────────────────────────────────
+
+enum ChannelLanguage {
+  en
+  ar
+}
+
+enum StepStatus {
+  todo
+  in_progress
+  done
+}
+
+enum EntryStatus {
+  active
+  archived
+}
+
+enum TrackerSource {
+  auto
+  manual
+}
+
+// ─── Modèles applicatifs ─────────────────────────────────────────
+
+// Un seul utilisateur réel (usage personnel), mais plusieurs chaînes.
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  name             String?
+  image            String?
+  lastVisitAt      DateTime         @default(now())
+  channels         Channel[]
+  knowledgeEntries KnowledgeEntry[]
+  accounts         Account[]
+  sessions         Session[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+// Une chaîne YouTube connectée (Cas B : chaque connexion OAuth = 1 Channel).
+model Channel {
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  language          ChannelLanguage @default(en)
+  youtubeChannelId  String          @unique
+  // Refresh token chiffré (AES-256-GCM via lib/crypto.ts). Jamais en clair.
+  refreshToken      String?
+  accessToken       String?
+  tokenExpiresAt    DateTime?
+  googleAccountType String?
+  trackerEntries    TrackerEntry[]
+  checklistSteps    ChecklistStep[]
+  alerts            Alert[]
+  knowledgeEntries  KnowledgeEntry[]
+  chatMessages      ChatMessage[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+// Checklist stratégie — 7 étapes par chaîne, instanciée à la connexion.
+model ChecklistStep {
+  id         String     @id @default(cuid())
+  channelId  String
+  channel    Channel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  stepNumber Int
+  title      String
+  subtasks   Json       @default("[]") // string[] de sous-tâches
+  notes      String?
+  status     StepStatus @default(todo)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([channelId, stepNumber])
+  @@index([channelId])
+}
+
+// Historique des stats (auto via sync, + manuel).
+model TrackerEntry {
+  id           String        @id @default(cuid())
+  channelId    String
+  channel      Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  date         DateTime      @default(now())
+  subscribers  Int           @default(0)
+  watchHours   Int           @default(0)
+  views        Int           @default(0)
+  videoCount   Int           @default(0) // nombre total de vidéos (détection "pas de nouvelle vidéo")
+  topCountries Json          @default("[]") // [{country, views}]
+  source       TrackerSource @default(auto)
+  createdAt    DateTime      @default(now())
+
+  @@index([channelId, date])
+}
+
+// Alertes déclenchées à chaque sync.
+model Alert {
+  id         String   @id @default(cuid())
+  channelId  String
+  channel    Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  type       String
+  message    String
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+
+  @@index([channelId, createdAt])
+}
+
+// Base de connaissances évolutive. channelId null = règle globale.
+model KnowledgeEntry {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channelId String?
+  channel   Channel?    @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  category  String
+  title     String
+  content   String
+  source    String?
+  status    EntryStatus @default(active)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId, category])
+  @@index([userId, channelId])
+}
+
+// Historique de conversation du mentor (l'API LLM n'a pas de mémoire).
+model ChatMessage {
+  id        String   @id @default(cuid())
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  role      String // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([channelId, createdAt])
+}
+
+// ─── Modèles NextAuth (prisma-adapter) ───────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
