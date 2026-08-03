@@ -45,9 +45,15 @@ Menu ☰ → **APIs & Services → Identifiants** :
 1. **+ Créer des identifiants → ID de client OAuth**
 2. **Type d'application** : **Application Web**
 3. **Nom** : `yt-mentor-web`
-4. **URI de redirection autorisés** — ajouter les DEUX :
-   - `http://localhost:3000/api/youtube/callback`
-   - `https://<TON-DOMAINE-VERCEL>/api/youtube/callback` *(à remplir après le déploiement)*
+4. **URI de redirection autorisés** — ajouter TOUS ceux-ci (une ligne chacun) :
+   - `http://localhost:3000/api/auth/callback/google` *(login NextAuth — OBLIGATOIRE, absent avant le 03-08)*
+   - `http://localhost:3000/api/youtube/callback` *(connexion de chaîne YouTube)*
+   - `https://<TON-DOMAINE-VERCEL>/api/auth/callback/google` *(prod, à ajouter après le déploiement)*
+   - `https://<TON-DOMAINE-VERCEL>/api/youtube/callback` *(prod, à ajouter après le déploiement)*
+
+   > ⚠️ Les deux callbacks sont utilisés par le code : NextAuth (`/api/auth/callback/google`) pour
+   > le **login**, et la connexion de chaîne (`/api/youtube/callback`). Si une seule manque, le flux
+   > concerné renverra `redirect_uri_mismatch`.
 5. **Créer**
 
 Une fenêtre s'ouvre avec le **Client ID** et le **Client Secret**. Copie-les (ne les partage jamais).

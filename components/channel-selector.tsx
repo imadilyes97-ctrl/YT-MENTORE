@@ -6,9 +6,16 @@ interface ChannelOption {
   id: string
   name: string
   language: 'en' | 'ar'
+  platform: 'youtube' | 'tiktok'
+}
+
+// Icône de plateforme : 📺 YouTube / 🎵 TikTok.
+function platformIcon(platform: ChannelOption['platform']) {
+  return platform === 'tiktok' ? '🎵' : '📺'
 }
 
 // Sélecteur de chaîne — l'état vit dans l'URL (?channel=...), pas dans un store.
+// Module 8 : affiche tous les Channel (YouTube ET TikTok) avec leur icône de plateforme.
 export default function ChannelSelector({ channels }: { channels: ChannelOption[] }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -28,7 +35,9 @@ export default function ChannelSelector({ channels }: { channels: ChannelOption[
   if (channels.length === 0) return null
   if (channels.length === 1) {
     return (
-      <span style={{ opacity: 0.7, fontSize: '0.9rem' }}>{channels[0].name}</span>
+      <span style={{ opacity: 0.7, fontSize: '0.9rem' }}>
+        {platformIcon(channels[0].platform)} {channels[0].name}
+      </span>
     )
   }
 
@@ -49,7 +58,7 @@ export default function ChannelSelector({ channels }: { channels: ChannelOption[
       >
         {channels.map((c) => (
           <option key={c.id} value={c.id}>
-            {c.name} ({c.language === 'ar' ? 'عربية' : 'EN'})
+            {platformIcon(c.platform)} {c.name} ({c.language === 'ar' ? 'عربية' : 'EN'})
           </option>
         ))}
       </select>

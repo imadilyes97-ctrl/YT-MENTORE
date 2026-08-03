@@ -18,13 +18,16 @@ export default async function IdeasPage({
   return (
     <main style={{ display: 'grid', gap: '1.25rem' }}>
       <section className="card" style={{ display: 'grid', gap: '0.3rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Générateur d&apos;idées</h2>
+        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
+          Générateur d&apos;idées {channel.platform === 'tiktok' ? '🎵 TikTok' : '📺 YouTube'}
+        </h2>
         <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.6 }}>
-          Choisis un pilier — le mentor propose 5 titres optimisés SEO pour la cible de{' '}
-          {channel.name} ({channel.language === 'ar' ? 'Golfe/diaspora' : 'Tier 1'}).
+          Choisis un pilier — le mentor propose 5 idées optimisées pour la cible de{' '}
+          {channel.name} ({channel.language === 'ar' ? 'Golfe/diaspora' : 'Tier 1'})
+          {channel.platform === 'tiktok' ? ', avec adaptation YouTube Shorts' : ''}.
         </p>
       </section>
-      <IdeasGenerator channelId={channel.id} />
+      <IdeasGenerator channelId={channel.id} platform={channel.platform} />
     </main>
   )
 }

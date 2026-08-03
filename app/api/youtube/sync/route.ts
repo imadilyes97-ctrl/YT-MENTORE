@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
   if (!channel) {
     return NextResponse.json({ error: 'Chaîne introuvable ou non autorisée' }, { status: 403 })
   }
+  // TikTok : pas d'API → pas de sync (saisie manuelle).
+  if (channel.platform !== 'youtube' || !channel.youtubeChannelId) {
+    return NextResponse.json({ error: 'Cette chaîne n\'est pas un YouTube connecté (sync impossible)' }, { status: 400 })
+  }
 
   try {
     const stats = await syncChannel(channel.youtubeChannelId)
@@ -56,6 +60,9 @@ export async function GET(req: NextRequest) {
   })
   if (!channel) {
     return NextResponse.json({ error: 'Chaîne introuvable' }, { status: 403 })
+  }
+  if (channel.platform !== 'youtube' || !channel.youtubeChannelId) {
+    return NextResponse.json({ error: 'Cette chaîne n\'est pas un YouTube connecté (sync impossible)' }, { status: 400 })
   }
   try {
     const stats = await syncChannel(channel.youtubeChannelId)

@@ -11,7 +11,15 @@ interface Msg {
   createdAt: string
 }
 
-export default function MentorChat({ channelId, channelName }: { channelId: string; channelName: string }) {
+export default function MentorChat({
+  channelId,
+  channelName,
+  platform = 'youtube',
+}: {
+  channelId: string
+  channelName: string
+  platform?: 'youtube' | 'tiktok'
+}) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
@@ -117,7 +125,9 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
   return (
     <div className="card" style={{ display: 'grid', gap: '0.8rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '0.95rem' }}>🎓 Mentor — {channelName}</h3>
+        <h3 style={{ margin: 0, fontSize: '0.95rem' }}>
+          🎓 Mentor — {platform === 'tiktok' ? '🎵' : '📺'} {channelName}
+        </h3>
         {loading && <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.5 }}>chargement…</span>}
       </div>
 

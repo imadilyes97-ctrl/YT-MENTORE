@@ -16,6 +16,12 @@ enum ChannelLanguage {
   ar
 }
 
+// Plateforme de la chaîne (Module 8 — Mentor TikTok : YouTube ET TikTok partagent la même table).
+enum Platform {
+  youtube
+  tiktok
+}
+
 enum StepStatus {
   todo
   in_progress
@@ -49,14 +55,23 @@ model User {
   updatedAt        DateTime         @updatedAt
 }
 
-// Une chaîne YouTube connectée (Cas B : chaque connexion OAuth = 1 Channel).
+// Une chaîne YouTube ou TikTok (Module 8 — schéma unifié).
+// youtubeChannelId : renseigné si platform=youtube (OAuth Google).
+// tiktokHandle : renseigné si platform=tiktok (création manuelle, pas d'API).
+// refreshToken : chiffré (AES-256-GCM via lib/crypto.ts), utilisé seulement si platform=youtube
+//   (ou si la Content Posting API TikTok est branchée plus tard).
 model Channel {
   id                String          @id @default(cuid())
   userId            String
   user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform          Platform        @default(youtube)
   name              String
   language          ChannelLanguage @default(en)
-  youtubeChannelId  String          @unique
+  niche             String? // "IA business/automatisation" par défaut ; ajustable par chaîne
+  youtubeChannelId  String?         @unique
+  tiktokHandle      String?
+  // Auto-sync : true pour YouTube (API analytics), false par défaut pour TikTok (saisie manuelle).
+  autoSyncEnabled   Boolean         @default(true)
   // Refresh token chiffré (AES-256-GCM via lib/crypto.ts). Jamais en clair.
   refreshToken      String?
   accessToken       String?
@@ -90,19 +105,22 @@ model ChecklistStep {
   @@index([channelId])
 }
 
-// Historique des stats (auto via sync, + manuel).
+// Historique des stats (auto via sync pour YouTube, manuel pour TikTok).
 model TrackerEntry {
-  id           String        @id @default(cuid())
-  channelId    String
-  channel      Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  date         DateTime      @default(now())
-  subscribers  Int           @default(0)
-  watchHours   Int           @default(0)
-  views        Int           @default(0)
-  videoCount   Int           @default(0) // nombre total de vidéos (détection "pas de nouvelle vidéo")
-  topCountries Json          @default("[]") // [{country, views}]
-  source       TrackerSource @default(auto)
-  createdAt    DateTime      @default(now())
+  id             String        @id @default(cuid())
+  channelId      String
+  channel        Channel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  date           DateTime      @default(now())
+  subscribers    Int           @default(0)
+  watchHours     Int           @default(0)
+  views          Int           @default(0) // total pour YouTube ; vues 30 derniers jours pour TikTok
+  videoCount     Int           @default(0) // nombre total de vidéos (détection "pas de nouvelle vidéo")
+  topCountries   Json          @default("[]") // [{country, views}]
+  // Champs TikTok uniquement (saisie hebdomadaire manuelle, estimés) — null pour YouTube.
+  creatorRewards  Float? // Creator Rewards Program estimé (montant)
+  shopCommissions Float? // commissions TikTok Shop Affiliate estimées
+  source         TrackerSource @default(auto)
+  createdAt      DateTime      @default(now())
 
   @@index([channelId, date])
 }

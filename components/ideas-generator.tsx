@@ -13,9 +13,17 @@ const PILLARS = [
   'Erreurs à éviter',
 ]
 
-export default function IdeasGenerator({ channelId }: { channelId: string }) {
+export default function IdeasGenerator({
+  channelId,
+  platform = 'youtube',
+}: {
+  channelId: string
+  platform?: 'youtube' | 'tiktok'
+}) {
   const router = useRouter()
+  const isTikTok = platform === 'tiktok'
   const [pillar, setPillar] = useState(PILLARS[0])
+  const [shorts, setShorts] = useState(false)
   const [loading, setLoading] = useState(false)
   const [ideas, setIdeas] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -28,7 +36,7 @@ export default function IdeasGenerator({ channelId }: { channelId: string }) {
       const res = await fetch('/api/ideas/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId, pillar }),
+        body: JSON.stringify({ channelId, pillar, shorts }),
       })
       const d = await res.json()
       if (d.ideas) {
@@ -70,6 +78,25 @@ export default function IdeasGenerator({ channelId }: { channelId: string }) {
           {loading ? 'Génération…' : '✨ Générer 5 titres'}
         </button>
       </div>
+
+      {/* Repurposing cross-plateforme (Module 8) : adaptation YouTube Shorts.
+          Pour TikTok, le repurposing est TOUJOURS actif (chaque idée adaptable en Shorts). */}
+      {!isTikTok && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', opacity: 0.8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={shorts}
+            onChange={(e) => setShorts(e.target.checked)}
+            style={{ accentColor: 'var(--accent)' }}
+          />
+          Inclure l&apos;adaptation YouTube Shorts (repurposing)
+        </label>
+      )}
+      {isTikTok && (
+        <p style={{ margin: 0, fontSize: '0.78rem', opacity: 0.6 }}>
+          🎬 Chaque idée TikTok inclut son adaptation en YouTube Shorts (repurposing cross-plateforme).
+        </p>
+      )}
 
       {error && <p style={{ fontSize: '0.85rem', color: 'var(--danger)', margin: 0 }}>{error}</p>}
 

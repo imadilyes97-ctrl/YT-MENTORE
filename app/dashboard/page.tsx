@@ -1,9 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import { getActiveChannel } from '@/lib/active-channel'
-import { YPP_TIERS } from '@/lib/alerts'
+import { YPP_TIERS, TIKTOK_TIERS } from '@/lib/alerts'
 import YppBars from '@/components/ypp-bars'
+import TikTokGoalBars from '@/components/tiktok-goal-bars'
 import StatsChart from '@/components/stats-chart'
 import ChannelBrief from '@/components/channel-brief'
+import TikTokAddPanel from '@/components/tiktok-add-panel'
 
 export const metadata = { title: 'Dashboard — YT Mentor' }
 export const dynamic = 'force-dynamic'
@@ -16,19 +18,25 @@ export default async function DashboardPage({
   const { channel } = await searchParams
   const { session, channels, channel: active } = await getActiveChannel(channel)
 
-  // Pas de chaîne connectée → état vide avec le bouton de connexion.
+  // Pas de chaîne connectée → état vide avec les 2 CTA (YouTube + TikTok).
   if (!active) {
     return (
       <main style={{ maxWidth: 1080, margin: '0 auto', padding: '2rem 1.5rem' }}>
+        <TikTokAddPanel />
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem' }}>
             Aucune chaîne connectée pour l&apos;instant.
           </p>
-          <a href="/api/youtube/connect" className="btn btn-primary" style={{ fontSize: '1rem', padding: '12px 24px' }}>
-            ➕ Connecter une chaîne YouTube
-          </a>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="/api/youtube/connect" className="btn btn-primary" style={{ fontSize: '1rem', padding: '12px 24px' }}>
+              ➕ Connecter une chaîne YouTube
+            </a>
+            <a href="/dashboard?add=tiktok" className="btn" style={{ fontSize: '1rem', padding: '12px 24px' }}>
+              🎵 Ajouter un compte TikTok
+            </a>
+          </div>
           <p style={{ marginTop: '1rem', fontSize: '0.8rem', opacity: 0.6 }}>
-            Une fois connectée, le mentor suit tes stats et te guide vers le YPP.
+            Le mentor suit tes stats et te guide vers le YPP (YouTube) ou le Creator Rewards (TikTok).
           </p>
         </div>
       </main>
@@ -70,60 +78,134 @@ export default async function DashboardPage({
   const doneSteps = checklist.filter((c) => c.status === 'done').length
   const topCountries = (last?.topCountries as { country: string; views: number }[] | null) ?? []
 
+  const isTikTok = active.platform === 'tiktok'
+
   return (
     <main style={{ display: 'grid', gap: '1.25rem' }}>
+      <TikTokAddPanel />
       <ChannelBrief channelId={active.id} />
 
-      {/* Hero stats */}
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
-        <div className="card">
-          <span className="label">Abonnés</span>
-          <div className="stat-value" style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
-            {last ? last.subscribers.toLocaleString('fr') : '—'}
+      {/* Hero stats — adaptées à la plateforme */}
+      {isTikTok ? (
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+          <div className="card">
+            <span className="label">Abonnés</span>
+            <div className="stat-value" style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
+              {last ? last.subscribers.toLocaleString('fr') : '—'}
+            </div>
+            <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
+              objectif {TIKTOK_TIERS.creatorRewards.subscribers.toLocaleString('fr')}
+            </span>
           </div>
-          <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
-            objectif {YPP_TIERS.tier2.subscribers.toLocaleString('fr')}
-          </span>
-        </div>
-        <div className="card">
-          <span className="label">Heures 12 mois</span>
-          <div className="stat-value" style={{ color: 'var(--accent-2)', fontVariantNumeric: 'tabular-nums' }}>
-            {last ? last.watchHours.toLocaleString('fr') : '—'}
+          <div className="card">
+            <span className="label">Vues 30 j</span>
+            <div className="stat-value" style={{ color: 'var(--accent-2)', fontVariantNumeric: 'tabular-nums' }}>
+              {last ? last.views.toLocaleString('fr') : '—'}
+            </div>
+            <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
+              / {TIKTOK_TIERS.creatorRewards.views30d.toLocaleString('fr')}
+            </span>
           </div>
-          <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
-            h / objectif {YPP_TIERS.tier2.watchHours.toLocaleString('fr')}h
-          </span>
-        </div>
-        <div className="card">
-          <span className="label">Vues</span>
-          <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {last ? last.views.toLocaleString('fr') : '—'}
+          <div className="card">
+            <span className="label">Creator Rewards</span>
+            <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {last && last.creatorRewards != null ? `${last.creatorRewards.toLocaleString('fr')} €` : '—'}
+            </div>
+            <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
+              estimé / semaine
+            </span>
           </div>
-          <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
-            {last ? `${last.videoCount} vidéo(s)` : ''}
-          </span>
-        </div>
-        <div className="card">
-          <span className="label">Checklist</span>
-          <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {doneSteps}
-            <span style={{ fontSize: '1rem', opacity: 0.45 }}>/{checklist.length}</span>
+          <div className="card">
+            <span className="label">TikTok Shop</span>
+            <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {last && last.shopCommissions != null ? `${last.shopCommissions.toLocaleString('fr')} €` : '—'}
+            </div>
+            <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
+              commissions estimées
+            </span>
           </div>
-          <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
-            étapes stratégie
-          </span>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+          <div className="card">
+            <span className="label">Abonnés</span>
+            <div className="stat-value" style={{ color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
+              {last ? last.subscribers.toLocaleString('fr') : '—'}
+            </div>
+            <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
+              objectif {YPP_TIERS.tier2.subscribers.toLocaleString('fr')}
+            </span>
+          </div>
+          <div className="card">
+            <span className="label">Heures 12 mois</span>
+            <div className="stat-value" style={{ color: 'var(--accent-2)', fontVariantNumeric: 'tabular-nums' }}>
+              {last ? last.watchHours.toLocaleString('fr') : '—'}
+            </div>
+            <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
+              h / objectif {YPP_TIERS.tier2.watchHours.toLocaleString('fr')}h
+            </span>
+          </div>
+          <div className="card">
+            <span className="label">Vues</span>
+            <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {last ? last.views.toLocaleString('fr') : '—'}
+            </div>
+            <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
+              {last ? `${last.videoCount} vidéo(s)` : ''}
+            </span>
+          </div>
+          <div className="card">
+            <span className="label">Checklist</span>
+            <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {doneSteps}
+              <span style={{ fontSize: '1rem', opacity: 0.45 }}>/{checklist.length}</span>
+            </div>
+            <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.55 }}>
+              étapes stratégie
+            </span>
+          </div>
+        </section>
+      )}
 
-      {/* YPP bars + top pays */}
+      {/* Barres d'objectifs + top pays (TikTok : Creator Rewards au lieu de YPP) */}
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
         <div className="card">
-          <h3 style={{ margin: '0 0 0.9rem', fontSize: '0.95rem' }}>Progression YPP</h3>
-          <YppBars subscribers={last?.subscribers ?? 0} watchHours={last?.watchHours ?? 0} />
+          <h3 style={{ margin: '0 0 0.9rem', fontSize: '0.95rem' }}>
+            {isTikTok ? 'Progression Creator Rewards' : 'Progression YPP'}
+          </h3>
+          {isTikTok ? (
+            <TikTokGoalBars
+              subscribers={last?.subscribers ?? 0}
+              views={last?.views ?? 0}
+              shopCommissions={last?.shopCommissions ?? null}
+            />
+          ) : (
+            <YppBars subscribers={last?.subscribers ?? 0} watchHours={last?.watchHours ?? 0} />
+          )}
         </div>
         <div className="card">
-          <h3 style={{ margin: '0 0 0.9rem', fontSize: '0.95rem' }}>Top pays (12 mois)</h3>
-          {topCountries.length > 0 ? (
+          <h3 style={{ margin: '0 0 0.9rem', fontSize: '0.95rem' }}>
+            {isTikTok ? 'Revenus estimés' : 'Top pays (12 mois)'}
+          </h3>
+          {isTikTok ? (
+            <div style={{ display: 'grid', gap: '0.45rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="mono" style={{ fontSize: '0.85rem' }}>Creator Rewards</span>
+                <span className="mono" style={{ fontSize: '0.78rem', opacity: 0.6 }}>
+                  {last && last.creatorRewards != null ? `${last.creatorRewards.toLocaleString('fr')} €` : '—'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="mono" style={{ fontSize: '0.85rem' }}>TikTok Shop Affiliate</span>
+                <span className="mono" style={{ fontSize: '0.78rem', opacity: 0.6 }}>
+                  {last && last.shopCommissions != null ? `${last.shopCommissions.toLocaleString('fr')} €` : '—'}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.78rem', opacity: 0.55, margin: 0 }}>
+                Saisie hebdomadaire manuelle dans l&apos;onglet Tracker.
+              </p>
+            </div>
+          ) : topCountries.length > 0 ? (
             <div style={{ display: 'grid', gap: '0.45rem' }}>
               {topCountries.slice(0, 6).map((c) => (
                 <div key={c.country} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>

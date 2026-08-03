@@ -33,7 +33,7 @@ export default async function LoginPage() {
           </div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', letterSpacing: '-0.02em' }}>YT Mentor</h1>
           <p style={{ margin: '0.5rem 0 0', color: 'var(--foreground)', opacity: 0.7, fontSize: '0.95rem' }}>
-            Développe ta chaîne YouTube Finance/IA avec un mentor IA.
+            Développe tes chaînes YouTube &amp; TikTok IA/business avec un mentor IA.
           </p>
         </div>
 
@@ -41,7 +41,8 @@ export default async function LoginPage() {
 
         <div style={{ marginTop: '1.5rem', fontSize: '0.8rem', color: 'var(--foreground)', opacity: 0.6, textAlign: 'center', lineHeight: 1.5 }}>
           Connexion avec ton compte Google.<br />
-          Scopes demandés : YouTube lecture + Analytics (données privées de ta chaîne uniquement).
+          Scopes demandés : YouTube lecture + Analytics (données privées de ta chaîne uniquement).<br />
+          TikTok : ajout manuel après connexion (pas d&apos;API analytics).
         </div>
       </div>
     </main>

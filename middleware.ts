@@ -6,5 +6,11 @@ export default withAuth({
 })
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/api/youtube/:path*', '/api/knowledge/:path*', '/api/mentor/:path*'],
+  matcher: [
+    '/dashboard/:path*',
+    '/api/youtube/:path*',
+    '/api/tiktok/:path*',
+    '/api/knowledge/:path*',
+    '/api/mentor/:path*',
+  ],
 }

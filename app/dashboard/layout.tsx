@@ -18,7 +18,7 @@ export default async function DashboardLayout({
   const channels = await prisma.channel.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'asc' },
-    select: { id: true, name: true, language: true },
+    select: { id: true, name: true, language: true, platform: true },
   })
 
   // La chaîne active est passée aux onglets pour préserver la sélection.
@@ -46,7 +46,10 @@ export default async function DashboardLayout({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <a href="/api/youtube/connect" className="btn" style={{ fontSize: '0.85rem' }}>
-            ➕ Connecter une chaîne
+            ➕ Connecter YouTube
+          </a>
+          <a href="/dashboard?add=tiktok" className="btn" style={{ fontSize: '0.85rem' }}>
+            🎵 Ajouter TikTok
           </a>
           <a href="/api/auth/signout" className="btn" style={{ fontSize: '0.85rem' }}>
             Déconnexion
@@ -56,12 +59,17 @@ export default async function DashboardLayout({
 
       {noChannels ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <p style={{ fontSize: '1.05rem', marginBottom: '1.25rem' }}>
-            Connecte ta première chaîne YouTube pour commencer.
+          <p style={{ fontSize: '1.05rem', marginBottom: '1.5rem' }}>
+            Connecte ta première chaîne pour commencer — YouTube ou TikTok.
           </p>
-          <a href="/api/youtube/connect" className="btn btn-primary" style={{ fontSize: '1rem', padding: '12px 24px' }}>
-            ➕ Connecter une chaîne YouTube
-          </a>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="/api/youtube/connect" className="btn btn-primary" style={{ fontSize: '1rem', padding: '12px 24px' }}>
+              ➕ Connecter une chaîne YouTube
+            </a>
+            <a href="/dashboard?add=tiktok" className="btn" style={{ fontSize: '1rem', padding: '12px 24px' }}>
+              🎵 Ajouter un compte TikTok
+            </a>
+          </div>
         </div>
       ) : (
         <>

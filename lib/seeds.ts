@@ -8,8 +8,9 @@ export interface ChecklistTemplateItem {
   subtasks: string[]
 }
 
-// 7 étapes de la checklist stratégie — instanciées à la connexion d'une chaîne.
-export const CHECKLIST_TEMPLATE: ChecklistTemplateItem[] = [
+// Template YouTube (7 étapes — strategy classique YPP).
+// Instanciées à la connexion d'une chaîne YouTube.
+export const CHECKLIST_TEMPLATE_YOUTUBE: ChecklistTemplateItem[] = [
   {
     stepNumber: 1,
     title: 'Nom de chaîne',
@@ -83,12 +84,84 @@ export const CHECKLIST_TEMPLATE: ChecklistTemplateItem[] = [
   },
 ]
 
+// Template TikTok (Module 8) — 7 étapes réordonnées selon les VRAIS seuils d'atteinte :
+// Shop Affiliate (1000-5000 abonnés, court terme) avant Creator Rewards (10K + 100K vues/30j, moyen terme).
+export const CHECKLIST_TEMPLATE_TIKTOK: ChecklistTemplateItem[] = [
+  {
+    stepNumber: 1,
+    title: 'Setup du compte',
+    subtasks: [
+      'Compte personnel (PAS business) — l\'algorithme favorise les comptes perso',
+      'Bio optimisée : niche + promesse + CTA',
+      'Photo de profil + nom d\'utilisateur cohérent avec la niche',
+      'Lien TikTok Shop / réseaux en bio si pertinent',
+    ],
+  },
+  {
+    stepNumber: 2,
+    title: 'Format des vidéos',
+    subtasks: [
+      'Présence humaine réelle (voix authentique ou visage) — le 100% IA est pénalisé en 2026',
+      'Durée 60-180 secondes (le format favorisé)',
+      'Sous-titres systématiques',
+      'Hook dans la 1ère seconde',
+    ],
+  },
+  {
+    stepNumber: 3,
+    title: 'Cohérence de niche',
+    subtasks: [
+      'Rester STRICTEMENT dans IA business/automatisation',
+      'Dévier de la niche = ~45% de portée en moins',
+      'Chaque vidéo doit déboucher sur un gain business concret',
+    ],
+  },
+  {
+    stepNumber: 4,
+    title: 'Cadence de publication',
+    subtasks: [
+      '3-5 vidéos de QUALITÉ par semaine',
+      'Pas de sur-publication quotidienne faible',
+      'Plan de contenu hebdomadaire (réutilisable)',
+    ],
+  },
+  {
+    stepNumber: 5,
+    title: 'SEO TikTok',
+    subtasks: [
+      '3-5 hashtags pertinents MAX — jamais #fyp/#foryou',
+      'Mots-clés dans la légende (recherche TikTok)',
+      'Titre texte à l\'écran + couverture accrocheuse',
+    ],
+  },
+  {
+    stepNumber: 6,
+    title: 'TikTok Shop Affiliate (objectif court terme)',
+    subtasks: [
+      'Seuil d\'accès : 1000-5000 abonnés',
+      'Atteignable AVANT le Creator Rewards Program',
+      'Commissions sur produits affiliés',
+    ],
+  },
+  {
+    stepNumber: 7,
+    title: 'Creator Rewards Program + repurposing (objectif moyen terme)',
+    subtasks: [
+      'Seuil : 10 000 abonnés + 100K vues / 30 jours',
+      'Activer le programme une fois le seuil atteint',
+      'Repurposing cross-plateforme : chaque idée TikTok → version YouTube Shorts',
+    ],
+  },
+]
+
 export interface KnowledgeSeed {
   category: string
   title: string
   content: string
   source: string
-  scope: 'global' | 'en' | 'ar' // en/ar = spécifique à une langue de chaîne
+  // scope : 'global' = instancié au 1er login ; 'en'/'ar' = langue de chaîne (YouTube) ;
+  // 'tiktok' = spécifique à une chaîne TikTok (instancié à sa création).
+  scope: 'global' | 'en' | 'ar' | 'tiktok'
 }
 
 // Seeds initiaux de la base de connaissances (instanciés au premier login).
@@ -134,6 +207,53 @@ export const KNOWLEDGE_SEEDS: KnowledgeSeed[] = [
     content: '80% de contenu evergreen (recherche stable, repères de long terme), 20% d\'actualité (boost de découverte à court terme).',
     source: 'seed',
     scope: 'global',
+  },
+]
+
+// Règles spécifiques TikTok (Module 8) — catégorie 'tiktok', instanciées liées à CHAQUE chaîne
+// TikTok à sa création (le mentor ne charge que les règles de la chaîne active).
+export const KNOWLEDGE_SEEDS_TIKTOK: KnowledgeSeed[] = [
+  {
+    category: 'tiktok',
+    title: 'Présence humaine réelle',
+    content: 'Voix authentique ou visage obligatoire : le contenu 100% généré par IA est pénalisé par l\'algorithme TikTok en 2026.',
+    source: 'seed',
+    scope: 'tiktok',
+  },
+  {
+    category: 'tiktok',
+    title: 'Format favorisé',
+    content: 'Durée 60-180 secondes, sous-titres systématiques, hook dans la 1ère seconde.',
+    source: 'seed',
+    scope: 'tiktok',
+  },
+  {
+    category: 'tiktok',
+    title: 'Cadence de publication',
+    content: '3-5 vidéos de qualité par semaine. Pas de sur-publication quotidienne faible.',
+    source: 'seed',
+    scope: 'tiktok',
+  },
+  {
+    category: 'tiktok',
+    title: 'Strictement dans la niche',
+    content: 'Rester strictement dans la niche IA business/automatisation — dévier = ~45% de portée en moins.',
+    source: 'seed',
+    scope: 'tiktok',
+  },
+  {
+    category: 'tiktok',
+    title: 'Hashtags',
+    content: '3-5 hashtags pertinents max, jamais #fyp/#foryou. Mots-clés dans la légende.',
+    source: 'seed',
+    scope: 'tiktok',
+  },
+  {
+    category: 'tiktok',
+    title: 'Repurposing cross-plateforme',
+    content: 'Chaque idée TikTok peut être adaptée en version YouTube Shorts (repurposing) pour cumuler les deux audiences.',
+    source: 'seed',
+    scope: 'tiktok',
   },
 ]
 
@@ -191,13 +311,45 @@ export async function ensureLanguageKnowledge(
   return created
 }
 
-// Appelé à la connexion d'une chaîne : crée les 7 étapes de checklist.
-export async function instantiateChecklist(channelId: string) {
+// Appelé à la création d'une chaîne TikTok : instancie les règles spécifiques TikTok
+// (catégorie 'tiktok'), liées à CETTE chaîne.
+export async function ensurePlatformKnowledge(
+  userId: string,
+  channelId: string,
+  platform: 'youtube' | 'tiktok',
+) {
+  if (platform !== 'tiktok') return 0
+  let created = 0
+  for (const seed of KNOWLEDGE_SEEDS_TIKTOK) {
+    const exists = await prisma.knowledgeEntry.findFirst({
+      where: { userId, channelId, title: seed.title },
+    })
+    if (!exists) {
+      await prisma.knowledgeEntry.create({
+        data: {
+          userId,
+          channelId,
+          category: seed.category,
+          title: seed.title,
+          content: seed.content,
+          source: seed.source,
+        },
+      })
+      created++
+    }
+  }
+  return created
+}
+
+// Appelé à la création/connexion d'une chaîne : crée les 7 étapes de checklist
+// du template correspondant à la plateforme.
+export async function instantiateChecklist(channelId: string, platform: 'youtube' | 'tiktok' = 'youtube') {
   const existing = await prisma.checklistStep.count({ where: { channelId } })
   if (existing > 0) return 0
 
+  const template = platform === 'tiktok' ? CHECKLIST_TEMPLATE_TIKTOK : CHECKLIST_TEMPLATE_YOUTUBE
   let created = 0
-  for (const step of CHECKLIST_TEMPLATE) {
+  for (const step of template) {
     await prisma.checklistStep.create({
       data: {
         channelId,

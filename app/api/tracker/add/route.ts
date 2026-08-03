@@ -5,7 +5,9 @@ import { prisma } from '@/lib/prisma'
 import { parseCount, clampCount, parseString } from '@/lib/validate'
 
 // Route /api/tracker/add — enregistre une entrée de suivi manuelle pour une chaîne.
-// Corps : { channelId, subscribers, watchHours, views, date? } — source = 'manual'.
+// Corps : { channelId, subscribers, watchHours, views, creatorRewards?, shopCommissions?, date? }
+// source = 'manual'. Les champs TikTok (creatorRewards, shopCommissions) sont ignorés si la
+// chaîne n'est pas TikTok.
 // Garde-fous : nombres bornés (pas d'overflow), channelId validé.
 
 export async function POST(req: NextRequest) {
@@ -19,6 +21,8 @@ export async function POST(req: NextRequest) {
     subscribers?: number
     watchHours?: number
     views?: number
+    creatorRewards?: number
+    shopCommissions?: number
     date?: string
   }
 
@@ -29,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   const channel = await prisma.channel.findFirst({
     where: { id: channelId, userId: session.user.id },
-    select: { id: true },
+    select: { id: true, platform: true },
   })
   if (!channel) {
     return NextResponse.json({ error: 'Chaîne introuvable' }, { status: 403 })
@@ -40,6 +44,15 @@ export async function POST(req: NextRequest) {
   const watchHours = clampCount(parseCount(body.watchHours), 0, 100_000)
   const views = clampCount(parseCount(body.views), 0, 1_000_000_000)
 
+  // Champs TikTok : montants estimés (€), bornés, uniquement si la chaîne est TikTok.
+  const isTikTok = channel.platform === 'tiktok'
+  const creatorRewards = isTikTok
+    ? clampFloat(Number(body.creatorRewards), 1_000_000)
+    : null
+  const shopCommissions = isTikTok
+    ? clampFloat(Number(body.shopCommissions), 1_000_000)
+    : null
+
   const date = parseString(body.date, '', 40)
   const entry = await prisma.trackerEntry.create({
     data: {
@@ -47,10 +60,18 @@ export async function POST(req: NextRequest) {
       subscribers,
       watchHours,
       views,
+      creatorRewards,
+      shopCommissions,
       source: 'manual',
       ...(date && !Number.isNaN(Date.parse(date)) ? { date: new Date(date) } : {}),
     },
   })
 
   return NextResponse.json({ success: true, entry })
+}
+
+// Montant borné (€ estimés) — NaN/négatif → null ; sinon clamp [0, max].
+function clampFloat(value: number, max: number): number | null {
+  if (!Number.isFinite(value) || value < 0) return null
+  return Math.min(max, Math.round(value * 100) / 100)
 }

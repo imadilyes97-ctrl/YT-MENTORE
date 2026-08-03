@@ -71,6 +71,8 @@ export async function GET(req: NextRequest) {
         await prisma.channel.update({
           where: { id: existing.id },
           data: {
+            platform: 'youtube',
+            autoSyncEnabled: true,
             accessToken: accessTokenEnc,
             tokenExpiresAt: expiresAt,
             // Le refresh token est écrasé uniquement si Google en a renvoyé un.
@@ -83,8 +85,10 @@ export async function GET(req: NextRequest) {
         const created = await prisma.channel.create({
           data: {
             userId: state.userId,
+            platform: 'youtube',
             name: ch.title,
             youtubeChannelId: ch.id,
+            autoSyncEnabled: true,
             accessToken: accessTokenEnc,
             tokenExpiresAt: expiresAt,
             refreshToken: refreshTokenEnc,
@@ -92,7 +96,7 @@ export async function GET(req: NextRequest) {
             language: 'en', // défini par défaut, ajustable dans le dashboard
           },
         })
-        await instantiateChecklist(created.id)
+        await instantiateChecklist(created.id, 'youtube')
         // Seeds de la langue de la chaîne (EN par défaut), liées à CETTE chaîne.
         await ensureLanguageKnowledge(state.userId, created.id, created.language)
         createdCount++

@@ -17,7 +17,7 @@ export default async function ChatPage({
 
   return (
     <main>
-      <MentorChat channelId={channel.id} channelName={channel.name} />
+      <MentorChat channelId={channel.id} channelName={channel.name} platform={channel.platform} />
     </main>
   )
 }

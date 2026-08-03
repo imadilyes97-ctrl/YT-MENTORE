@@ -16,6 +16,13 @@ export const YPP_TIERS = {
   tier2: { subscribers: 1000, watchHours: 4000, shortsViews: 10_000_000 },
 }
 
+// Seuils d'atteinte TikTok (Module 8) — réordonnés selon les vrais seuils :
+// Shop Affiliate (court terme) avant Creator Rewards (moyen terme).
+export const TIKTOK_TIERS = {
+  shopAffiliate: { minSubscribers: 1000, maxSubscribers: 5000 },
+  creatorRewards: { subscribers: 10_000, views30d: 100_000 },
+}
+
 // Trajectoire attendue des heures de visionnage (mois 6 : 1500-2000h).
 const TRAJECTORY_MONTH6 = { min: 1500, max: 2000 }
 
@@ -31,6 +38,12 @@ const COOLDOWN_HOURS: Record<string, number> = {
   ypp_close_tier1: 7 * 24,
   ypp_close_tier2: 7 * 24,
   trajectory_low: 7 * 24,
+  // TikTok (Module 8)
+  tiktok_no_entry_7d: 7 * 24,
+  tiktok_shop_reached: 90 * 24,
+  tiktok_shop_close: 7 * 24,
+  tiktok_creator_rewards_reached: 90 * 24,
+  tiktok_creator_rewards_close: 7 * 24,
 }
 
 // Crée l'alerte uniquement si aucune alerte du même type n'existe depuis le cooldown.
@@ -65,7 +78,82 @@ export function tier1Share(countries: { country: string; views: number }[], set:
   return Math.round((tier1 / total) * 1000) / 10 // pourcentage, 1 décimale
 }
 
-// ─── Logique principale (appelée à chaque sync) ───────────────────
+// ─── Alertes TikTok (Module 8) ────────────────────────────────────
+// TikTok n'a pas d'API analytics : saisie hebdomadaire manuelle. Les alertes sont donc :
+// 1) Rappel automatique si aucune entrée depuis 7 jours.
+// 2) Seuil TikTok Shop Affiliate (1000-5000 abonnés, objectif court terme).
+// 3) Seuil Creator Rewards Program (10K abonnés + 100K vues/30j, objectif moyen terme).
+
+async function runTikTokAlerts(channel: any): Promise<{ triggered: number; details: string[] }> {
+  const entries = channel.trackerEntries
+  const details: string[] = []
+  let triggered = 0
+
+  const userEmail = channel.user.email
+  const emailBase = userEmail ? { to: userEmail } : null
+  const lastEntry = entries[entries.length - 1]
+
+  // 1) Rappel hebdomadaire : aucune entrée depuis 7 jours.
+  if (!lastEntry || Date.now() - lastEntry.date.getTime() > 7 * 24 * 60 * 60 * 1000) {
+    const days = lastEntry
+      ? Math.round((Date.now() - lastEntry.date.getTime()) / (1000 * 60 * 60 * 24))
+      : 0
+    const msg = days === 0
+      ? `📝 TikTok : aucune entrée hebdomadaire enregistrée pour le moment. Pense à saisir tes stats (abonnés, vues 30j, revenus).`
+      : `📝 TikTok : aucune entrée depuis ${days} jours. Saisis tes stats hebdomadaires (abonnés, vues 30j, revenus).`
+    if (await createAlertDedup(channel.id, 'tiktok_no_entry_7d', msg)) {
+      details.push(msg)
+      triggered++
+      if (emailBase) {
+        await sendEmail(emailBase.to, `[YT Mentor] ${channel.name} — rappel saisie hebdomadaire`, `<p>${msg}</p>`)
+      }
+    }
+  }
+
+  if (!lastEntry) return { triggered, details }
+
+  const subPct = Math.round((lastEntry.subscribers / TIKTOK_TIERS.creatorRewards.subscribers) * 100)
+  const viewsPct = Math.round((lastEntry.views / TIKTOK_TIERS.creatorRewards.views30d) * 100)
+
+  // 2) TikTok Shop Affiliate — objectif court terme (1000-5000 abonnés).
+  if (lastEntry.subscribers >= TIKTOK_TIERS.shopAffiliate.minSubscribers) {
+    const msg = `🛍️ TikTok Shop Affiliate atteint ! ${lastEntry.subscribers} abonnés (seuil ${TIKTOK_TIERS.shopAffiliate.minSubscribers}). Active le programme et commence les commissions.`
+    if (await createAlertDedup(channel.id, 'tiktok_shop_reached', msg)) {
+      details.push(msg)
+      triggered++
+      if (emailBase) await sendEmail(emailBase.to, `[YT Mentor] 🛍️ ${channel.name} — TikTok Shop Affiliate atteint !`, `<p>${msg}</p>`)
+    }
+  } else if (lastEntry.subscribers >= TIKTOK_TIERS.shopAffiliate.minSubscribers * 0.8) {
+    const msg = `🛍️ Proche du TikTok Shop Affiliate : ${lastEntry.subscribers}/${TIKTOK_TIERS.shopAffiliate.minSubscribers} abonnés.`
+    if (await createAlertDedup(channel.id, 'tiktok_shop_close', msg)) {
+      details.push(msg)
+      triggered++
+    }
+  }
+
+  // 3) Creator Rewards Program — objectif moyen terme (10K abonnés + 100K vues/30j).
+  const crReached =
+    lastEntry.subscribers >= TIKTOK_TIERS.creatorRewards.subscribers &&
+    lastEntry.views >= TIKTOK_TIERS.creatorRewards.views30d
+  if (crReached) {
+    const msg = `🎉 Creator Rewards Program atteint ! ${lastEntry.subscribers.toLocaleString('en')} abonnés + ${lastEntry.views.toLocaleString('en')} vues/30j. Active le programme.`
+    if (await createAlertDedup(channel.id, 'tiktok_creator_rewards_reached', msg)) {
+      details.push(msg)
+      triggered++
+      if (emailBase) await sendEmail(emailBase.to, `[YT Mentor] 🎉 ${channel.name} — Creator Rewards atteint !`, `<p>${msg}</p>`)
+    }
+  } else if (subPct >= 80 || viewsPct >= 80) {
+    const msg = `🚀 Proche du Creator Rewards : ${subPct}% abonnés, ${viewsPct}% vues/30j.`
+    if (await createAlertDedup(channel.id, 'tiktok_creator_rewards_close', msg)) {
+      details.push(msg)
+      triggered++
+    }
+  }
+
+  return { triggered, details }
+}
+
+// ─── Logique principale (appelée à chaque sync pour YouTube, chaque vérif pour TikTok) ──
 
 export async function runAlertsForChannel(channelId: string) {
   const channel = await prisma.channel.findUnique({
@@ -73,6 +161,11 @@ export async function runAlertsForChannel(channelId: string) {
     include: { user: true, trackerEntries: { orderBy: { date: 'asc' } } },
   })
   if (!channel) return { triggered: 0, details: [] }
+
+  // TikTok : logique dédiée (rappel hebdomadaire + seuils Shop/Creator Rewards).
+  if (channel.platform === 'tiktok') {
+    return runTikTokAlerts(channel)
+  }
 
   const entries = channel.trackerEntries
   const details: string[] = []

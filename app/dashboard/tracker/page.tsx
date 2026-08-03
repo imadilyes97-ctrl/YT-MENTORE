@@ -32,23 +32,39 @@ export default async function TrackerPage({
 
   // Dernière entrée pour la ligne de lecture.
   const last = entries[entries.length - 1]
+  const isTikTok = channel.platform === 'tiktok'
 
   return (
     <main style={{ display: 'grid', gap: '1.25rem' }}>
       <section className="card">
-        <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem' }}>Évolution — {channel.name}</h3>
+        <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem' }}>
+          Évolution — {channel.name} {isTikTok ? '🎵' : '📺'}
+        </h3>
         <StatsChart points={points} />
         {last && (
           <p className="mono" style={{ fontSize: '0.75rem', opacity: 0.6, margin: '0.75rem 0 0' }}>
-            Dernière sync : {last.date.toISOString().slice(0, 10)} · {last.subscribers} abonnés ·{' '}
-            {last.watchHours}h · {last.views} vues
+            {isTikTok ? 'Dernière entrée' : 'Dernière sync'} : {last.date.toISOString().slice(0, 10)} ·{' '}
+            {last.subscribers} abonnés ·{' '}
+            {isTikTok
+              ? `${last.views} vues 30j` +
+                (last.creatorRewards != null ? ` · ${last.creatorRewards.toLocaleString('fr')} € Creator Rewards` : '') +
+                (last.shopCommissions != null ? ` · ${last.shopCommissions.toLocaleString('fr')} € Shop` : '')
+              : `${last.watchHours}h · ${last.views} vues`}
           </p>
         )}
       </section>
 
       <section className="card">
-        <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem' }}>Entrée manuelle</h3>
-        <TrackerAddForm channelId={channel.id} />
+        <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem' }}>
+          {isTikTok ? 'Saisie hebdomadaire (manuel)' : 'Entrée manuelle'}
+        </h3>
+        <TrackerAddForm channelId={channel.id} platform={channel.platform} />
+        {isTikTok && (
+          <p style={{ margin: '0.6rem 0 0', fontSize: '0.78rem', opacity: 0.6 }}>
+            TikTok n&apos;a pas d&apos;API analytics : les stats (abonnés, vues 30j, revenus estimés)
+            sont saisies manuellement chaque semaine.
+          </p>
+        )}
       </section>
     </main>
   )

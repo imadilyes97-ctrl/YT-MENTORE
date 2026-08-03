@@ -28,6 +28,9 @@ export default async function KnowledgePage({
     orderBy: [{ category: 'asc' }, { createdAt: 'desc' }],
   })
 
+  // Icône/badge de plateforme par chaîne (📺 YouTube / 🎵 TikTok — Module 8).
+  const platformById = new Map(channels.map((c) => [c.id, c.platform]))
+
   // Regroupe par catégorie.
   const byCat = new Map<string, typeof entries>()
   for (const e of entries) {
@@ -66,7 +69,8 @@ export default async function KnowledgePage({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {e.channelId && (
                       <span className="mono" style={{ fontSize: '0.68rem', opacity: 0.6 }}>
-                        📺 {channelNameById.get(e.channelId) ?? 'Chaîne'}
+                        {platformById.get(e.channelId) === 'tiktok' ? '🎵' : '📺'}{' '}
+                        {channelNameById.get(e.channelId) ?? 'Chaîne'}
                       </span>
                     )}
                     <KnowledgeArchiveButton entryId={e.id} />
