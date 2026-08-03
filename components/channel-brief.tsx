@@ -7,9 +7,10 @@
 import { useEffect, useState } from 'react'
 
 interface BriefData {
-  content: string
+  content: string | null
   model: string
   absenceDays?: number
+  error?: string
 }
 
 export default function ChannelBrief({ channelId }: { channelId: string }) {
@@ -60,7 +61,11 @@ export default function ChannelBrief({ channelId }: { channelId: string }) {
           </span>
         )}
       </div>
-      {data?.content ? (
+      {data?.error ? (
+        <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--danger)' }}>
+          Erreur : {data.error}
+        </p>
+      ) : data?.content ? (
         <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.92rem', lineHeight: 1.6 }}>
           {data.content}
         </p>

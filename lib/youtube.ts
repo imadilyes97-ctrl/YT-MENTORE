@@ -60,9 +60,11 @@ export async function exchangeCodeForTokens(code: string): Promise<TokenResponse
 }
 
 // Rafraîchit un access_token Google (expire après 60 min) via le refresh_token.
+// Retourne aussi un éventuel nouveau refresh_token (rotation rare chez Google, fix review GLM-5.2).
 export async function refreshAccessToken(refreshToken: string): Promise<{
   accessToken: string
   expiresIn: number
+  refreshToken?: string
 }> {
   const body = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID || '',
@@ -80,7 +82,11 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
   if (!res.ok || !data.access_token) {
     throw new Error(`Refresh du token échoué: ${data.error_description || data.error || res.status}`)
   }
-  return { accessToken: data.access_token, expiresIn: data.expires_in || 3600 }
+  return {
+    accessToken: data.access_token,
+    expiresIn: data.expires_in || 3600,
+    ...(data.refresh_token ? { refreshToken: data.refresh_token } : {}),
+  }
 }
 
 // ─── Récupération d'un access token valide (avec refresh si nécessaire) ──
@@ -90,7 +96,7 @@ export interface ChannelAccess {
 }
 
 // Retourne un access_token valide pour une chaîne, en le rafraîchissant si expiré.
-// Met à jour la Channel en base (nouveau accessToken + tokenExpiresAt, refresh token inchangé).
+// Les access tokens sont stockés chiffrés (cohérence crypto, fix review GLM-5.2).
 export async function getValidAccessToken(channelId: string): Promise<ChannelAccess> {
   const channel = await prisma.channel.findUnique({ where: { id: channelId } })
   if (!channel) throw new Error('Chaîne introuvable')
@@ -98,18 +104,23 @@ export async function getValidAccessToken(channelId: string): Promise<ChannelAcc
   const refreshToken = channel.refreshToken ? decryptToken(channel.refreshToken) : null
   if (!refreshToken) throw new Error('Aucun refresh token pour cette chaîne — reconnecter')
 
-  // Si l'access token est encore valide (> 2 min de marge), on le réutilise.
+  // Si l'access token chiffré est encore valide (> 2 min de marge), on le déchiffre et réutilise.
   if (channel.accessToken && channel.tokenExpiresAt && channel.tokenExpiresAt.getTime() > Date.now() + 120_000) {
-    return { accessToken: channel.accessToken }
+    try {
+      return { accessToken: decryptToken(channel.accessToken) }
+    } catch {
+      // Token illisible → on retombe sur un refresh propre.
+    }
   }
 
-  // Sinon refresh.
-  const { accessToken, expiresIn } = await refreshAccessToken(refreshToken)
+  // Sinon refresh (gère aussi la rotation du refresh token).
+  const { accessToken, expiresIn, refreshToken: newRefresh } = await refreshAccessToken(refreshToken)
   await prisma.channel.update({
     where: { id: channelId },
     data: {
-      accessToken,
+      accessToken: encryptToken(accessToken),
       tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
+      ...(newRefresh ? { refreshToken: encryptToken(newRefresh) } : {}),
     },
   })
   return { accessToken }
@@ -206,23 +217,24 @@ export async function syncChannel(youtubeChannelId: string): Promise<ChannelStat
 
   const analytics = await fetchAnalytics(accessToken, youtubeChannelId)
 
-  // Enregistre l'entrée de suivi (historique dans le temps).
-  await prisma.trackerEntry.create({
-    data: {
-      channelId: channel.id,
-      subscribers: info.subscribers,
-      watchHours: analytics.watchHours,
-      views: info.totalViews,
-      videoCount: info.videoCount,
-      topCountries: analytics.topCountries,
-      source: 'auto',
-    },
-  })
-
-  // Met à jour le nom si changé.
-  if (info.name !== channel.name) {
-    await prisma.channel.update({ where: { id: channel.id }, data: { name: info.name } })
-  }
+  // Transaction : l'entrée d'historique et la mise à jour du nom sont atomiques
+  // (fix review GLM-5.2 — pas de commit partiel).
+  await prisma.$transaction([
+    prisma.trackerEntry.create({
+      data: {
+        channelId: channel.id,
+        subscribers: info.subscribers,
+        watchHours: analytics.watchHours,
+        views: info.totalViews,
+        videoCount: info.videoCount,
+        topCountries: analytics.topCountries,
+        source: 'auto',
+      },
+    }),
+    ...(info.name !== channel.name
+      ? [prisma.channel.update({ where: { id: channel.id }, data: { name: info.name } })]
+      : []),
+  ])
 
   // info contient name/subscribers/totalViews/videoCount ; analytics watchHours/views12m/topCountries.
   return { youtubeChannelId, ...info, ...analytics }

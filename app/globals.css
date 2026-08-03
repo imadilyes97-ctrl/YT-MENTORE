@@ -21,6 +21,9 @@
   --color-border: #262b36;
   --color-accent: #6c5ce7;
   --color-accent-2: #00d1b2;
+  --color-danger: #ff6b6b;
+  --color-warning: #ffd93d;
+  --color-success: #6bcb77;
 }
 
 * {

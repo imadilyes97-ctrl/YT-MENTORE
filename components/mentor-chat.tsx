@@ -16,8 +16,13 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [welcomeDone, setWelcomeDone] = useState(false)
+  const [error, setError] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const idRef = useRef(0)
+  const firstRender = useRef(true)
+
+  // IDs uniques (pas de collision de keys avec Date.now() seul — fix review GLM-5.2-Design).
+  const uid = (p: string) => `${p}-${Date.now()}-${idRef.current++}`
 
   // Charge l'historique puis génère l'accueil automatique si vide.
   useEffect(() => {
@@ -36,7 +41,7 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
         }))
         setMessages(list)
         if (list.length === 0) {
-          // Accueil automatique du mentor.
+          // Accueil automatique du mentor (le serveur le persiste → pas de doublon au re-mount).
           const r = await fetch('/api/mentor/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -44,8 +49,7 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
           })
           const w = await r.json()
           if (!cancelled && w.reply) {
-            setMessages((prev) => [
-              ...prev,
+            setMessages([
               {
                 id: `welcome-${Date.now()}`,
                 role: 'assistant',
@@ -53,7 +57,6 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
                 createdAt: new Date().toISOString(),
               },
             ])
-            setWelcomeDone(true)
           }
         }
       } catch {
@@ -67,9 +70,15 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
     }
   }, [channelId])
 
-  // Auto-scroll vers le bas à chaque nouveau message.
+  // Auto-scroll du conteneur (pas de la page) + skip au premier mount
+  // (fix review GLM-5.2-Design : ne pas scroller la page entière au chargement).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    if (firstRender.current) {
+      firstRender.current = false
+      return
+    }
+    const container = bottomRef.current?.parentElement
+    if (container) container.scrollTop = container.scrollHeight
   }, [messages])
 
   async function send() {
@@ -77,10 +86,11 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
     if (!text || sending) return
     setInput('')
     setSending(true)
+    setError('')
     // Optimistic : affiche immédiatement le message de l'utilisateur.
     setMessages((prev) => [
       ...prev,
-      { id: `tmp-${Date.now()}`, role: 'user', content: text, createdAt: new Date().toISOString() },
+      { id: uid('tmp'), role: 'user', content: text, createdAt: new Date().toISOString() },
     ])
     try {
       const res = await fetch('/api/mentor/chat', {
@@ -92,9 +102,13 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
       if (d.reply) {
         setMessages((prev) => [
           ...prev,
-          { id: `reply-${Date.now()}`, role: 'assistant', content: d.reply, createdAt: new Date().toISOString() },
+          { id: uid('reply'), role: 'assistant', content: d.reply, createdAt: new Date().toISOString() },
         ])
+      } else {
+        setError(d.error || 'Le mentor n’a pas pu répondre.')
       }
+    } catch {
+      setError('Échec réseau — réessaie.')
     } finally {
       setSending(false)
     }
@@ -107,8 +121,11 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
         {loading && <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.5 }}>chargement…</span>}
       </div>
 
-      {/* Zone de messages */}
+      {/* Zone de messages (aria-live pour les lecteurs d'écran — fix review GLM-5.2-Design) */}
       <div
+        role="log"
+        aria-live="polite"
+        aria-busy={sending}
         style={{
           display: 'grid',
           gap: '0.6rem',
@@ -139,7 +156,10 @@ export default function MentorChat({ channelId, channelName }: { channelId: stri
           </div>
         ))}
         {sending && (
-          <div style={{ alignSelf: 'flex-start', fontSize: '0.85rem', opacity: 0.6 }}>…</div>
+          <div style={{ alignSelf: 'flex-start', fontSize: '0.85rem', opacity: 0.6 }} aria-label="Envoi en cours">…</div>
+        )}
+        {error && (
+          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--danger)' }}>{error}</p>
         )}
         <div ref={bottomRef} />
       </div>

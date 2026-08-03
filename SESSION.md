@@ -22,6 +22,27 @@
 | 8 — Connaissances | ✅ FAIT le 03-08 | /dashboard/knowledge, /api/knowledge/add (résumé LLM 3-5 points + catégorie, scope global/channel), détection conflit + /api/knowledge/resolve-conflict (garder/remplacer/les deux), /api/knowledge/archive |
 | 9 — Mentor chat + brief | ✅ FAIT le 03-08 | lib/llm.ts (GLM-5.2 CF round-robin 6 comptes, fallback MiniMax Dahl), lib/mentor.ts (prompt dynamique + budget 3000 tokens, 15/catégorie), /api/mentor/chat (historique ChatMessage, accueil auto, résumé d'absence >7j), /dashboard/chat (mentor-chat.tsx) |
 
+## 🐛 Review 6 modèles + tests (03-08)
+
+**3 reviews complètes reçues** (Nemotron archi, GLM-5.2 backend/sécu, GLM-5.2-Design frontend) — MiniMax (timeout Dahl), DeepSeek ("0 blocks"), North (500) HS côté fournisseur.
+
+**Corrections appliquées :**
+- 🔴 **CRITICAL CSRF/IDOR** — state OAuth non signé → nouveau `lib/oauth-state.ts` (HMAC-SHA256 + TTL 10min), connect signe, callback vérifie + valide `state.userId`
+- 🟠 **Alertes spam** — chaque sync re-créait les alertes → `createAlertDedup` avec cooldown par type (tier1_drop/no_video/ypp_reached_tier1/2, ypp_close_tier1/2, trajectory_low)
+- 🟠 **YPP tier1** — exige maintenant `videoCount >= 3` (vidéos publiques)
+- 🟡 **accessToken stocké en clair** → chiffré AES-GCM comme le refresh token (lecture + stockage)
+- 🟡 **Rotation refresh token ignorée** → `refreshAccessToken` retourne le nouveau refresh_token, `getValidAccessToken` le persiste chiffré
+- 🟡 **syncChannel non atomique** → `prisma.$transaction` (trackerEntry + update nom)
+- 🟡 **Seeds langue jamais liés à la chaîne** → `ensureLanguageKnowledge(userId, channelId, language)` appelé dans le callback OAuth ; `ensureKnowledgeSeeds` ne crée que les `scope: global`
+- 🟡 **Frontend** : barre abonnés verte à 100%, IDs uniques chat (compteur ref), welcome non dupliqué, toggle checklist avec gestion d'erreur, tooltip chart limité aux abonnés, aria-live/aria-pressed/progressbar, contraste nav, empty state sans chaîne, `@theme` complété
+
+**Tests ajoutés (verts) :**
+- `npm test` — 14 tests unitaires (crypto round-trip/tamper, validate parse/clamp, youtube URLs, alerts tier1Share) ✅
+- `npm run test:integration` — 3 scénarios DB réelle (ypp_close, ypp_reached, buildMentorSystemPrompt) + nettoyage ✅
+- Test HTTP : `/` 200, `/login` 200, `/dashboard` 307→login, cron Bearer 200 (Neon), routes API 401 sans session ✅
+
+**Notes non appliquées (prod) :** `x-vercel-cron-signature` au lieu du Bearer, `managedByMe` pour les chaînes gérées (Cas B mono-compte actuellement), stocker `channelCreatedAt` réel pour la trajectoire.
+
 ## 🆕 Nouveautés de la session 03-08
 
 - **lib/llm.ts** — client GLM-5.2 CF (`@cf/zai-org/glm-5.2`), round-robin sticky sur CF_ACCOUNT_1..6, fallback MiniMax Dahl. Réplique orchestra.py. Fonction `chatLLM(messages, {maxTokens, model})`.

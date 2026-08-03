@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForTokens, listAccessibleChannels } from '@/lib/youtube'
 import { prisma } from '@/lib/prisma'
 import { encryptToken } from '@/lib/crypto'
-import { instantiateChecklist } from '@/lib/seeds'
+import { instantiateChecklist, ensureLanguageKnowledge } from '@/lib/seeds'
+import { verifyOAuthState } from '@/lib/oauth-state'
 
 // Route /api/youtube/callback — rappelé par Google après consentement.
-// 1. Vérifie le state (CSRF + userId + type).
+// 1. Vérifie le state signé (HMAC, anti-CSRF/IDOR) + userId présent.
 // 2. Échange le code → tokens.
 // 3. Récupère les chaînes accessibles, crée/update une Channel par chaîne.
-// 4. Instancie la checklist 7 étapes. Redirige vers le dashboard.
+// 4. Instancie la checklist 7 étapes + seeds langue. Redirige vers le dashboard.
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -28,11 +29,9 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  // Décode le state (base64url JSON).
-  let state: { userId?: string; type?: string }
-  try {
-    state = JSON.parse(Buffer.from(stateRaw, 'base64url').toString('utf8'))
-  } catch {
+  // Vérifie la signature HMAC + expiration du state (anti-CSRF/IDOR).
+  const state = verifyOAuthState(stateRaw)
+  if (!state?.userId) {
     return NextResponse.redirect(
       new URL('/dashboard?error=state_invalide', req.nextUrl.origin),
     )
@@ -54,6 +53,8 @@ export async function GET(req: NextRequest) {
     }
 
     const refreshTokenEnc = tokens.refresh_token ? encryptToken(tokens.refresh_token) : null
+    // L'access token (60 min) est chiffré comme le refresh token (cohérence crypto, fix review GLM-5.2).
+    const accessTokenEnc = tokens.access_token ? encryptToken(tokens.access_token) : null
     const expiresAt = tokens.expires_in
       ? new Date(Date.now() + tokens.expires_in * 1000)
       : null
@@ -70,7 +71,7 @@ export async function GET(req: NextRequest) {
         await prisma.channel.update({
           where: { id: existing.id },
           data: {
-            accessToken: tokens.access_token,
+            accessToken: accessTokenEnc,
             tokenExpiresAt: expiresAt,
             // Le refresh token est écrasé uniquement si Google en a renvoyé un.
             ...(refreshTokenEnc ? { refreshToken: refreshTokenEnc } : {}),
@@ -78,26 +79,23 @@ export async function GET(req: NextRequest) {
           },
         })
       } else {
-        // Nouvelle chaîne : crée la Channel + sa checklist.
-        await prisma.channel.create({
+        // Nouvelle chaîne : crée la Channel + sa checklist (create retourne déjà l'entité).
+        const created = await prisma.channel.create({
           data: {
-            userId: state.userId!,
+            userId: state.userId,
             name: ch.title,
             youtubeChannelId: ch.id,
-            accessToken: tokens.access_token,
+            accessToken: accessTokenEnc,
             tokenExpiresAt: expiresAt,
             refreshToken: refreshTokenEnc,
             googleAccountType: state.type || 'same',
             language: 'en', // défini par défaut, ajustable dans le dashboard
           },
         })
-        const created = await prisma.channel.findUnique({
-          where: { youtubeChannelId: ch.id },
-        })
-        if (created) {
-          await instantiateChecklist(created.id)
-          createdCount++
-        }
+        await instantiateChecklist(created.id)
+        // Seeds de la langue de la chaîne (EN par défaut), liées à CETTE chaîne.
+        await ensureLanguageKnowledge(state.userId, created.id, created.language)
+        createdCount++
       }
     }
 

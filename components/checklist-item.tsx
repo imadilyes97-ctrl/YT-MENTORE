@@ -31,17 +31,22 @@ const STATUS_COLOR: Record<Status, string> = {
 export default function ChecklistItem({ step }: { step: Step }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
   async function toggle() {
     if (busy) return
     setBusy(true)
+    setError('')
     try {
-      await fetch('/api/checklist/toggle', {
+      const res = await fetch('/api/checklist/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stepId: step.id }),
       })
+      if (!res.ok) throw new Error('Échec de la mise à jour')
       router.refresh() // re-render serveur avec le nouveau statut
+    } catch {
+      setError("Échec de la mise à jour — réessaie.")
     } finally {
       setBusy(false)
     }
@@ -61,8 +66,11 @@ export default function ChecklistItem({ step }: { step: Step }) {
       }}
     >
       <button
+        type="button"
         onClick={toggle}
-        aria-label={`Changer le statut : ${step.title}`}
+        disabled={busy}
+        aria-pressed={done}
+        aria-label={`${done ? 'Marquer à faire' : 'Changer le statut'} : ${step.title}`}
         style={{
           flexShrink: 0,
           width: 22,
@@ -73,6 +81,7 @@ export default function ChecklistItem({ step }: { step: Step }) {
           background: done ? 'var(--success)' : 'transparent',
           cursor: busy ? 'wait' : 'pointer',
           transition: 'background 0.15s ease',
+          outlineOffset: 2,
         }}
       />
       <div style={{ flex: 1 }}>
@@ -88,12 +97,17 @@ export default function ChecklistItem({ step }: { step: Step }) {
         </div>
         {step.subtasks.length > 0 && (
           <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.1rem', display: 'grid', gap: '0.2rem' }}>
-            {step.subtasks.map((s) => (
-              <li key={s} style={{ fontSize: '0.85rem', opacity: 0.75 }}>
+            {step.subtasks.map((s, i) => (
+              <li key={`${s}-${i}`} style={{ fontSize: '0.85rem', opacity: 0.75 }}>
                 {s}
               </li>
             ))}
           </ul>
+        )}
+        {error && (
+          <p style={{ margin: '0.4rem 0 0', fontSize: '0.78rem', color: 'var(--danger)' }}>
+            {error}
+          </p>
         )}
       </div>
     </div>

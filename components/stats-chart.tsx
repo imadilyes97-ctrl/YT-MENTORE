@@ -24,9 +24,19 @@ interface Point {
 
 const AXIS_TICK = { fill: 'oklch(0.45 0.01 260)', fontSize: 11, fontFamily: 'ui-monospace, SFMono-Regular, monospace' }
 
-function CustomTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null
-  const p = payload[0].payload as Point
+// Le graphique trace uniquement les abonnés : le tooltip n'affiche que cette série
+// (fix review GLM-5.2-Design — il montrait des vues/heures non tracées).
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ payload?: Point }>
+  label?: string
+}) {
+  if (!active || !payload?.length || !payload[0]?.payload) return null
+  const p = payload[0].payload
   return (
     <div
       style={{
@@ -40,8 +50,6 @@ function CustomTooltip({ active, payload, label }: any) {
     >
       <div style={{ opacity: 0.6, marginBottom: 4 }}>{label}</div>
       <div>👤 {p.subscribers.toLocaleString('fr')} abonnés</div>
-      <div>📺 {p.views.toLocaleString('fr')} vues</div>
-      <div>⏱ {p.watchHours.toLocaleString('fr')}h visionnage</div>
     </div>
   )
 }

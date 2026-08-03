@@ -46,7 +46,7 @@ export default function DashboardNav({ channelId }: { channelId?: string }) {
               fontWeight: active ? 600 : 400,
               background: active ? 'var(--surface-2)' : 'transparent',
               color: active ? 'var(--foreground)' : 'var(--foreground)',
-              opacity: active ? 1 : 0.65,
+              opacity: active ? 1 : 0.85,
               textDecoration: 'none',
               transition: 'background 0.15s ease, opacity 0.15s ease',
             }}

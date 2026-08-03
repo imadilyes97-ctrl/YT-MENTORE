@@ -23,6 +23,8 @@ export default async function DashboardLayout({
 
   // La chaîne active est passée aux onglets pour préserver la sélection.
   const activeChannel = channels[0]
+  // Sans chaîne connectée, on n'affiche pas les onglets sous-pages qui requièrent un channelId.
+  const noChannels = channels.length === 0
 
   return (
     <div style={{ maxWidth: 1080, margin: '0 auto', padding: '2rem 1.5rem' }}>
@@ -52,9 +54,21 @@ export default async function DashboardLayout({
         </div>
       </header>
 
-      <DashboardNav channelId={activeChannel?.id} />
-
-      {children}
+      {noChannels ? (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+          <p style={{ fontSize: '1.05rem', marginBottom: '1.25rem' }}>
+            Connecte ta première chaîne YouTube pour commencer.
+          </p>
+          <a href="/api/youtube/connect" className="btn btn-primary" style={{ fontSize: '1rem', padding: '12px 24px' }}>
+            ➕ Connecter une chaîne YouTube
+          </a>
+        </div>
+      ) : (
+        <>
+          <DashboardNav channelId={activeChannel?.id} />
+          {children}
+        </>
+      )}
     </div>
   )
 }

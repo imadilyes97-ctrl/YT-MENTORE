@@ -139,15 +139,15 @@ export const KNOWLEDGE_SEEDS: KnowledgeSeed[] = [
 
 // ─── Helpers d'instanciation ────────────────────────────────────
 
-// Appelé au premier login : installe les connaissances globales par défaut.
+// Appelé au premier login : installe UNIQUEMENT les connaissances globales (scope === 'global').
+// Les seeds spécifiques à une langue (scope en/ar) sont instanciées à la connexion de la chaîne
+// correspondante via ensureLanguageKnowledge (voir callback OAuth).
 export async function ensureKnowledgeSeeds(userId: string) {
-  const existing = await prisma.knowledgeEntry.count({ where: { userId } })
+  const existing = await prisma.knowledgeEntry.count({ where: { userId, channelId: null } })
   if (existing > 0) return 0
 
   let created = 0
-  for (const seed of KNOWLEDGE_SEEDS) {
-    // Les seeds spécifiques à une langue sont instanciés globalement aussi,
-    // puis réassignés à la bonne chaîne lors de la connexion de celle-ci.
+  for (const seed of KNOWLEDGE_SEEDS.filter((s) => s.scope === 'global')) {
     await prisma.knowledgeEntry.create({
       data: {
         userId,
@@ -158,6 +158,35 @@ export async function ensureKnowledgeSeeds(userId: string) {
       },
     })
     created++
+  }
+  return created
+}
+
+// Appelé à la connexion d'une chaîne : instancie les seeds de la langue de la chaîne,
+// liées à CETTE chaîne (le mentor ne charge que les règles de la chaîne active).
+export async function ensureLanguageKnowledge(
+  userId: string,
+  channelId: string,
+  language: 'en' | 'ar',
+) {
+  let created = 0
+  for (const seed of KNOWLEDGE_SEEDS.filter((s) => s.scope === language)) {
+    const exists = await prisma.knowledgeEntry.findFirst({
+      where: { userId, channelId, title: seed.title },
+    })
+    if (!exists) {
+      await prisma.knowledgeEntry.create({
+        data: {
+          userId,
+          channelId,
+          category: seed.category,
+          title: seed.title,
+          content: seed.content,
+          source: seed.source,
+        },
+      })
+      created++
+    }
   }
   return created
 }

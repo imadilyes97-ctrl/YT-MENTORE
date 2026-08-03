@@ -40,16 +40,23 @@ export default function YppBars({
             </div>
 
             {/* Abonnés */}
-            <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr 44px', gap: '0.5rem', alignItems: 'center', marginBottom: '0.4rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, auto) 1fr 44px', gap: '0.5rem', alignItems: 'center', marginBottom: '0.4rem' }}>
               <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.65 }}>
                 {subscribers.toLocaleString('fr')} / {tier.subscribers}
               </span>
-              <div className="ypp-track">
+              <div
+                className="ypp-track"
+                role="progressbar"
+                aria-valuenow={subPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Abonnés ${subscribers.toLocaleString('fr')}/${tier.subscribers} (${subPct}%)`}
+              >
                 <div
                   className="ypp-fill"
                   style={{
                     transform: `scaleX(${subPct / 100})`,
-                    background: 'var(--accent)',
+                    background: subPct >= 100 ? 'var(--success)' : 'var(--accent)',
                   }}
                 />
               </div>
@@ -59,11 +66,18 @@ export default function YppBars({
             </div>
 
             {/* Heures de visionnage */}
-            <div style={{ display: 'grid', gridTemplateColumns: '52px 1fr 44px', gap: '0.5rem', alignItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, auto) 1fr 44px', gap: '0.5rem', alignItems: 'center' }}>
               <span className="mono" style={{ fontSize: '0.72rem', opacity: 0.65 }}>
                 {watchHours.toLocaleString('fr')}h / {tier.watchHours.toLocaleString('fr')}h
               </span>
-              <div className="ypp-track">
+              <div
+                className="ypp-track"
+                role="progressbar"
+                aria-valuenow={hoursPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`Heures ${watchHours.toLocaleString('fr')}h/${tier.watchHours.toLocaleString('fr')}h (${hoursPct}%)`}
+              >
                 <div
                   className="ypp-fill"
                   style={{
